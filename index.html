@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PopQuete</title>
+
+    <!-- CONFIGURATION APPLICATION MOBILE NATIVE (PWA iOS & ANDROID) -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PopQuete">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link id="dynamicManifest" rel="manifest">
+    <link id="appleTouchIcon" rel="apple-touch-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            overscroll-behavior-y: none;
+            padding-top: var(--safe-top);
+            padding-bottom: calc(82px + var(--safe-bottom));
+        }
+        input, textarea, select {
+            font-size: 16px !important;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        .nav-active {
+            color: #4f46e5 !important;
+        }
+        .nav-active .nav-pill {
+            background-color: #eef2ff;
+            color: #4f46e5;
+        }
+        .choice-active {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+            color: #312e81 !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+        }
+        .step-highlight {
+            animation: pulseRing 1.1s ease-out;
+        }
+        @keyframes pulseRing {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.45); }
+            100% { box-shadow: 0 0 0 14px rgba(79, 70, 229, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- =================================================================== -->
+    <!-- ÉCRAN DE DÉVERROUILLAGE PIN POUR LES ONGLETS ADMIN / DASHBOARD      -->
+    <!-- =================================================================== -->
+    <div id="pinLockModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-5">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                🔒
+            </div>
+            <div>
+                <h3 class="text-lg font-extrabold text-slate-900">Espace Admin Verrouillé</h3>
+                <p class="text-xs text-slate-500 mt-1">Entrez votre code PIN pour accéder aux statistiques et aux réglages.</p>
+            </div>
+            <input type="password" id="unlockPinField" inputmode="numeric" placeholder="••••" maxlength="10"
+                onkeydown="if(event.key==='Enter') confirmPinUnlock()"
+                class="w-full text-center text-2xl tracking-widest font-black px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-600 focus:outline-none">
+            <p id="pinErrorMsg" class="text-xs text-rose-600 font-bold hidden">Code PIN incorrect.</p>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button type="button" onclick="cancelPinUnlock()" class="py-3 rounded-2xl text-xs font-bold text-slate-600 bg-slate-100 active:bg-slate-200">
+                    Retour Sondage
+                </button>
+                <button type="button" onclick="confirmPinUnlock()" class="py-3 rounded-2xl text-xs font-extrabold text-white bg-indigo-600 active:bg-indigo-700">
+                    Déverrouiller
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL D'INSTALLATION SUR L'ÉCRAN D'ACCUEIL (GUIDE iOS / ANDROID)    -->
+    <!-- =================================================================== -->
+    <div id="installGuideModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-sm">PQ</div>
+                    <h3 class="text-base font-extrabold text-slate-900">Installer l'application PopQuete</h3>
+                </div>
+                <button type="button" onclick="closeInstallModal()" class="text-slate-400 text-xl font-bold px-2">&times;</button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Installez <strong>PopQuete</strong> sur votre téléphone pour l'utiliser en plein écran comme une application native, même sans connexion Internet :
+            </p>
+            <div class="space-y-2.5 text-xs">
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div class="font-extrabold text-slate-900 mb-1">🍎 Sur iPhone (Safari) :</div>
+                    <p class="text-slate-600">Appuyez sur le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut en bas de l'écran), puis choisissez <strong>« Sur l'écran d'accueil »</strong>.</p>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <div class="font-extrabold text-slate-900 mb-1">🤖 Sur Android (Chrome) :</div>
+                    <p class="text-slate-600">Appuyez sur le menu <strong>⋮</strong> en haut à droite, puis sélectionnez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong>.</p>
+                </div>
+            </div>
+            <button type="button" id="nativeInstallBtn" onclick="triggerNativeInstall()" class="hidden w-full py-3.5 rounded-2xl bg-indigo-600 text-white font-extrabold text-xs">
+                📲 Installer automatiquement maintenant
+            </button>
+            <button type="button" onclick="closeInstallModal()" class="w-full py-3 rounded-2xl bg-slate-900 text-white font-bold text-xs">
+                J'ai compris
+            </button>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL DE MODIFICATION D'UNE QUESTION                                -->
+    <!-- =================================================================== -->
+    <div id="editQuestionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h3 class="text-base font-extrabold text-slate-900">✏️ Modifier la Question</h3>
+                <button type="button" onclick="closeEditModal()" class="text-slate-400 text-xl font-bold">&times;</button>
+            </div>
+            <input type="hidden" id="editQId">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Intitulé de la question</label>
+                    <input type="text" id="editQTitle" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold">
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Type</label>
+                        <select id="editQType" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold">
+                            <option value="text">Texte libre</option>
+                            <option value="numeric">Numérique</option>
+                            <option value="scale10">Note /10</option>
+                            <option value="yesno">Oui / Non</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Catégorie</label>
+                        <input type="text" id="editQCat" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold">
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="closeEditModal()" class="py-2.5 rounded-xl bg-slate-100 text-xs font-bold text-slate-600">Annuler</button>
+                <button type="button" onclick="saveEditedQuestion()" class="py-2.5 rounded-xl bg-indigo-600 text-xs font-extrabold text-white">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION MOBILE -->
+    <div id="appToast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900/95 text-white px-4 py-2.5 rounded-full shadow-xl text-xs font-bold flex items-center gap-2 whitespace-nowrap">
+        <span id="appToastText"> Enregistré</span>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TOP APP BAR (BARRE SUPÉRIEURE STYLE APPLICATION MOBILE)             -->
+    <!-- =================================================================== -->
+    <header class="sticky top-0 z-30 bg-slate-900 text-white px-4 py-3 shadow-md">
+        <div class="max-w-lg mx-auto flex items-center justify-between gap-2">
+            <!-- Logo Moderne PopQuete -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-emerald-400 p-0.5 shadow-md shrink-0">
+                    <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                        <svg class="w-5 h-5" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 10C6 6.68629 8.68629 4 12 4H24C27.3137 4 30 6.68629 30 10V20C30 23.3137 27.3137 26 24 26H15L9 31V26H12C8.68629 26 6 23.3137 6 20V10Z" stroke="#818CF8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="12" y="16" width="2.8" height="5" rx="1.4" fill="#818CF8"/>
+                            <rect x="16.6" y="12" width="2.8" height="9" rx="1.4" fill="#6366F1"/>
+                            <rect x="21.2" y="9" width="2.8" height="12" rx="1.4" fill="#34D399"/>
+                        </svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-base font-black tracking-tight">Pop<span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">Quete</span></span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">App</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides : Compte X + Bouton Installer App -->
+            <div class="flex items-center gap-2">
+                <a id="topXLink" href="https://x.com" target="_blank" rel="noopener noreferrer"
+                    class="px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold text-white flex items-center gap-1">
+                    <span>𝕏</span>
+                    <span id="topXHandle">@PopQuete</span>
+                </a>
+                <button type="button" onclick="openInstallModal()" title="Installer l'application sur le téléphone"
+                    class="px-2.5 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500 text-[11px] font-extrabold text-white">
+                    📲 App
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- CONTENU DE L'APPLICATION (3 ÉCRANS MOBILES)                         -->
+    <!-- =================================================================== -->
+    <main class="max-w-lg w-full mx-auto px-4 pt-4 flex-1">
+
+        <!-- =============================================================== -->
+        <!-- ÉCRAN 1 : SONDAGE CITOYEN ANONYME (POUR LES SONDÉS)             -->
+        <!-- =============================================================== -->
+        <div id="screenSurvey" class="space-y-4">
+
+            <!-- Carte Contexte Manifestation & Garantie d'Anonymat -->
+            <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 shadow-lg space-y-3">
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="font-bold text-emerald-300 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        🛡️ Anonymat strict garanti
+                    </span>
+                    <span id="surveyStepBadge" class="font-bold text-indigo-200">Étape 1 / 2</span>
+                </div>
+
+                <h1 id="surveyManifestationTitle" class="text-base sm:text-lg font-extrabold leading-snug">
+                    Enquête Statistique & Recueil d'Expression
+                </h1>
+
+                <p id="surveyAnonymityNotice" class="text-xs text-slate-300 leading-relaxed">
+                    PopQuete ne collecte aucune information personnelle sur vous, à l'exception de votre âge uniquement si vous souhaitez l'indiquer.
+                </p>
+
+                <div class="bg-white/10 rounded-2xl p-2.5 text-[11px] text-indigo-100 flex items-center gap-2">
+                    <span class="text-sm font-bold">𝕏</span>
+                    <span>Statistiques publiées sur <strong id="surveyXInline" class="text-white underline">@PopQuete</strong></span>
+                </div>
+            </div>
+
+            <!-- Formulaire actif -->
+            <div id="surveyActiveForm" class="space-y-4">
+
+                <!-- Sélecteur de question (si plusieurs questions) -->
+                <div id="surveyQuestionPickerWrap" class="hidden bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Choisir la question :
+                    </label>
+                    <select id="surveyQuestionSelect" onchange="onSurveyQuestionChange()"
+                        class="w-full px-3.5 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-sm text-slate-900">
+                    </select>
+                </div>
+
+                <!-- ÉTAPE 1 : LA QUESTION & LA ZONE DE TEXTE -->
+                <section id="mobileStep1" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center">1</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Votre Réponse</span>
+                        </div>
+                        <span id="surveyQCatBadge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">Question</span>
+                    </div>
+
+                    <h2 id="surveyQTitleText" class="text-base font-extrabold text-slate-900 leading-snug">
+                        Quelle est votre réponse ou votre principale motivation aujourd'hui ?
+                    </h2>
+
+                    <!-- Champ structuré dynamique si question Numérique / Note / Oui-Non -->
+                    <div id="surveyStructuredWrap" class="hidden"></div>
+
+                    <!-- Zone de texte libre -->
+                    <div>
+                        <label id="surveyTextareaLabel" class="block text-xs font-bold uppercase text-slate-500 mb-1.5">
+                            Zone de réponse écrite :
+                        </label>
+                        <textarea id="surveyTextInput" rows="4"
+                            placeholder="Touchez ici pour écrire votre réponse..."
+                            class="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none transition"></textarea>
+                    </div>
+
+                    <button type="button" onclick="finishStep1AndAutoScroll()"
+                        class="w-full py-3.5 px-4 rounded-2xl bg-indigo-50 active:bg-indigo-100 text-indigo-700 font-extrabold text-xs border border-indigo-200 flex items-center justify-center gap-2">
+                        <span>J'ai terminé ma réponse — Continuer</span>
+                        <span>↓</span>
+                    </button>
+                </section>
+
+                <!-- ÉTAPE 2 : L'ÂGE UNIQUEMENT (AU CHOIX DU SONDÉ) -->
+                <section id="mobileStep2" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center">2</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Votre Âge (Facultatif)</span>
+                        </div>
+                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            Zéro autre donnée
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2.5">
+                        <button type="button" id="btnAgeAccept" onclick="setMobileAgeShare(true, true)"
+                            class="choice-active p-3.5 rounded-2xl border-2 border-slate-200 text-left flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🎂</span>
+                                <div>
+                                    <div class="text-xs font-extrabold">J'indique mon âge</div>
+                                    <div class="text-[11px] text-slate-500">Inclus dans le calcul de l'âge moyen</div>
+                                </div>
+                            </div>
+                            <span class="text-indigo-600 font-black text-sm">✓</span>
+                        </button>
+
+                        <button type="button" id="btnAgeDecline" onclick="setMobileAgeShare(false, true)"
+                            class="p-3.5 rounded-2xl border-2 border-slate-200 text-left flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🕶️</span>
+                                <div>
+                                    <div class="text-xs font-extrabold">Je préfère ne pas l'indiquer</div>
+                                    <div class="text-[11px] text-slate-500">Réponse enregistrée sans âge</div>
+                                </div>
+                            </div>
+                            <span class="text-slate-300 font-black text-sm">○</span>
+                        </button>
+                    </div>
+
+                    <!-- Sélecteur d'âge tactile -->
+                    <div id="mobileAgeControls" class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-700">Sélectionnez votre âge :</span>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="stepMobileAge(-1)" class="w-8 h-8 rounded-xl bg-white border border-slate-300 font-black">−</button>
+                                <input type="number" id="mobileAgeNumber" min="10" max="110" value="20"
+                                    oninput="syncMobileAge(this.value, false)"
+                                    class="w-14 py-1 rounded-xl border border-indigo-300 bg-white text-center font-black text-indigo-700">
+                                <button type="button" onclick="stepMobileAge(1)" class="w-8 h-8 rounded-xl bg-white border border-slate-300 font-black">+</button>
+                                <span class="text-xs font-bold text-slate-600">ans</span>
+                            </div>
+                        </div>
+
+                        <input type="range" id="mobileAgeRange" min="14" max="85" value="20"
+                            oninput="syncMobileAge(this.value, false)"
+                            onchange="scrollToFinalSubmit()"
+                            class="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg">
+
+                        <div class="grid grid-cols-4 gap-1.5 pt-1">
+                            <button type="button" onclick="syncMobileAge(18, true)" class="py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 active:bg-indigo-600 active:text-white">18 ans</button>
+                            <button type="button" onclick="syncMobileAge(20, true)" class="py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 active:bg-indigo-600 active:text-white">20 ans</button>
+                            <button type="button" onclick="syncMobileAge(22, true)" class="py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 active:bg-indigo-600 active:text-white">22 ans</button>
+                            <button type="button" onclick="syncMobileAge(25, true)" class="py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 active:bg-indigo-600 active:text-white">25 ans</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BOUTON FINAL D'ENVOI -->
+                <div id="mobileSubmitAnchor" class="pt-1">
+                    <button type="button" onclick="submitMobileSurvey()"
+                        class="w-full bg-indigo-600 active:bg-indigo-700 text-white font-extrabold text-base py-4 px-6 rounded-3xl shadow-xl shadow-indigo-200 flex items-center justify-center gap-2">
+                        <span>Valider ma réponse anonyme</span>
+                        <span>✓</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ÉCRAN DE CONFIRMATION APRÈS ENVOI -->
+            <div id="surveySuccessCard" class="hidden bg-white rounded-3xl shadow-lg border border-slate-200 p-6 text-center space-y-5">
+                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-black">
+                    ✓
+                </div>
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900">Merci ! Réponse enregistrée</h2>
+                    <p class="text-xs text-slate-500 mt-1">Aucune information personnelle d'identification n'a été collectée.</p>
+                </div>
+
+                <div class="bg-slate-900 text-white p-4 rounded-2xl text-left flex items-center justify-between gap-2">
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Statistiques publiées sur</div>
+                        <div id="successXHandle" class="text-sm font-extrabold text-indigo-300">@PopQuete</div>
+                    </div>
+                    <a id="successXLink" href="https://x.com" target="_blank" rel="noopener noreferrer"
+                        class="px-3 py-2 rounded-xl bg-white text-slate-900 font-extrabold text-xs">
+                        Ouvrir 𝕏 →
+                    </a>
+                </div>
+
+                <div id="successSummaryText" class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs text-slate-600 text-left space-y-1"></div>
+
+                <button type="button" onclick="resetMobileSurvey()"
+                    class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-extrabold text-sm shadow-md">
+                    Sondé suivant (Réinitialiser) ↻
+                </button>
+            </div>
+        </div>
+
+
+        <!-- =============================================================== -->
+        <!-- ÉCRAN 2 : DASHBOARD STATISTIQUE, TIRAGE D'ÂGE & EXPORT X / PNG  -->
+        <!-- =============================================================== -->
+        <div id="screenDashboard" class="hidden space-y-4">
+
+            <!-- Sélection de la question & Tirage d'âge -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Question analysée</label>
+                    <button type="button" onclick="openEditCurrentDashQuestion()" class="text-xs font-bold text-indigo-600">
+                        ✏️ Modifier
+                    </button>
+                </div>
+                <select id="dashQuestionSelect" onchange="refreshMobileDashboard()"
+                    class="w-full px-3.5 py-3 rounded-2xl border border-slate-200 bg-slate-50 font-bold text-xs text-slate-900">
+                </select>
+
+                <!-- Filtres d'âge + Bouton Tirer un âge au sort -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <select id="dashAgeFilterMode" onchange="onDashAgeModeChange()"
+                        class="px-3 py-2.5 rounded-2xl border border-slate-200 bg-white text-xs font-bold text-slate-700">
+                        <option value="all">Tous les sondés</option>
+                        <option value="exact">Âge exact</option>
+                        <option value="range">Tranche d'âge</option>
+                        <option value="declined">Sans âge</option>
+                    </select>
+
+                    <button type="button" onclick="drawRandomAgeMobile()"
+                        class="py-2.5 px-3 rounded-2xl bg-indigo-600 active:bg-indigo-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>🎲</span>
+                        <span>Tirer un âge</span>
+                    </button>
+                </div>
+
+                <!-- Contrôles d'âge conditionnels -->
+                <div id="dashExactAgeWrap" class="hidden flex items-center justify-between bg-indigo-50 p-2.5 rounded-2xl border border-indigo-200">
+                    <span class="text-xs font-bold text-indigo-900">Âge ciblé :</span>
+                    <div class="flex items-center gap-1.5">
+                        <input type="number" id="dashExactAgeVal" value="20" min="5" max="120" oninput="refreshMobileDashboard()"
+                            class="w-16 py-1 rounded-xl border border-indigo-300 bg-white text-center font-black text-xs text-indigo-700">
+                        <span class="text-xs font-bold text-indigo-700">ans</span>
+                    </div>
+                </div>
+
+                <div id="dashRangeAgeWrap" class="hidden flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                    <span class="text-xs font-bold text-slate-600">De</span>
+                    <input type="number" id="dashMinAgeVal" value="18" oninput="refreshMobileDashboard()" class="w-16 py-1 rounded-xl border border-slate-300 text-center font-bold text-xs">
+                    <span class="text-xs font-bold text-slate-600">à</span>
+                    <input type="number" id="dashMaxAgeVal" value="25" oninput="refreshMobileDashboard()" class="w-16 py-1 rounded-xl border border-slate-300 text-center font-bold text-xs">
+                    <span class="text-xs font-bold text-slate-600">ans</span>
+                </div>
+
+                <!-- Résultat du tirage d'âge -->
+                <div id="dashDrawBanner" class="hidden p-3 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-2">
+                    <div id="dashDrawText" class="text-xs font-semibold text-indigo-950"></div>
+                    <button type="button" onclick="resetDashAgeFilter()" class="text-[11px] font-extrabold text-indigo-600 underline shrink-0">Tous</button>
+                </div>
+            </div>
+
+            <!-- Grille KPI Mobile (2x2) -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                    <div class="text-[10px] font-bold uppercase text-slate-400">Réponse Moyenne</div>
+                    <div id="mKpiMean" class="text-xl font-black text-indigo-600 mt-0.5 truncate">—</div>
+                    <div id="mKpiMeanSub" class="text-[11px] text-slate-500 mt-0.5 truncate">Sur la sélection</div>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                    <div class="text-[10px] font-bold uppercase text-slate-400">Âge Moyen Indiqué</div>
+                    <div id="mKpiAge" class="text-xl font-black text-amber-600 mt-0.5 truncate">—</div>
+                    <div id="mKpiAgeSub" class="text-[11px] text-slate-500 mt-0.5 truncate">Étendue : —</div>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                    <div class="text-[10px] font-bold uppercase text-slate-400">Médiane & Écart-type</div>
+                    <div id="mKpiMedStd" class="text-base font-extrabold text-slate-800 mt-1 truncate">—</div>
+                    <div id="mKpiMinMax" class="text-[11px] text-slate-500 mt-0.5 truncate">Min/Max : —</div>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                    <div class="text-[10px] font-bold uppercase text-slate-400">Échantillon (n)</div>
+                    <div id="mKpiCount" class="text-xl font-black text-emerald-600 mt-0.5">0</div>
+                    <div id="mKpiCorr" class="text-[11px] text-slate-500 mt-0.5 truncate">Pearson r : —</div>
+                </div>
+            </div>
+
+            <!-- Actions Diffusion X & Extraction Image PNG -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="shareReportOnX()"
+                    class="py-3.5 px-3 rounded-2xl bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md">
+                    <span>𝕏</span>
+                    <span>Publier sur X</span>
+                </button>
+                <button type="button" onclick="exportMobileReportPNG()"
+                    class="py-3.5 px-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md">
+                    <span>📸</span>
+                    <span>Extraire Image PNG</span>
+                </button>
+            </div>
+
+            <!-- Graphique 1 : Réponses moyennes par âge -->
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h3 class="text-xs font-extrabold uppercase text-slate-700">Réponses Moyennes par Âge</h3>
+                        <p class="text-[11px] text-slate-400">Touchez une barre pour filtrer cet âge</p>
+                    </div>
+                </div>
+                <div class="h-56 relative">
+                    <canvas id="mobileChartAge"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique 2 : Distribution -->
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                <h3 class="text-xs font-extrabold uppercase text-slate-700 mb-2">Distribution des Réponses</h3>
+                <div class="h-56 relative">
+                    <canvas id="mobileChartDist"></canvas>
+                </div>
+            </div>
+
+            <!-- Liste des réponses individuelles anonymes -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="text-xs font-extrabold uppercase text-slate-700">Réponses Anonymes Enregistrées</h3>
+                    <button type="button" onclick="exportCSV()" class="text-xs font-bold text-indigo-600">Export CSV</button>
+                </div>
+                <div id="mobileResponsesList" class="divide-y divide-slate-100 max-h-80 overflow-y-auto"></div>
+            </div>
+        </div>
+
+
+        <!-- =============================================================== -->
+        <!-- ÉCRAN 3 : CONFIGURATION, QUESTIONS, COMPTE X & SÉCURITÉ PIN     -->
+        <!-- =============================================================== -->
+        <div id="screenConfig" class="hidden space-y-4">
+
+            <!-- Créer une nouvelle question -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-slate-900">➕ Ajouter une Question PopQuete</h2>
+                <input type="text" id="newQTitle" placeholder="Intitulé de la question..."
+                    class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-300 text-sm">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="newQType" class="px-3 py-2.5 rounded-2xl border border-slate-300 bg-white text-xs font-bold">
+                        <option value="text">Texte libre / Raison</option>
+                        <option value="numeric">Numérique (Nombre)</option>
+                        <option value="scale10">Note de 1 à 10</option>
+                        <option value="yesno">Oui / Non</option>
+                    </select>
+                    <input type="text" id="newQCat" placeholder="Catégorie (ex: Études)"
+                        class="px-3 py-2.5 rounded-2xl border border-slate-300 text-xs">
+                </div>
+                <button type="button" onclick="addQuestionFromMobile()"
+                    class="w-full py-3 rounded-2xl bg-indigo-600 text-white font-extrabold text-xs">
+                    Enregistrer la nouvelle question
+                </button>
+            </div>
+
+            <!-- Liste des questions avec modification -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-extrabold text-slate-900">📋 Vos Questions (<span id="cfgQCount">0</span>)</h2>
+                </div>
+                <div id="cfgQuestionsList" class="space-y-2"></div>
+            </div>
+
+            <!-- Paramètres Manifestation & Compte X -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-slate-900">𝕏 Liaison Compte X & Manifestation</h2>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Votre Compte X (Twitter)</label>
+                    <input type="text" id="cfgXInput" oninput="saveMobileContext()" value="@PopQuete"
+                        placeholder="@VotreCompteX"
+                        class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-300 text-sm font-bold">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Raison / Objet de la manifestation</label>
+                    <input type="text" id="cfgReasonInput" oninput="saveMobileContext()"
+                        placeholder="Ex: Mobilisation étudiante — Conditions d'études"
+                        class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-300 text-sm">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Mention d'anonymat affichée sur les graphiques</label>
+                    <textarea id="cfgNoticeInput" rows="2" oninput="saveMobileContext()"
+                        class="w-full p-3 rounded-2xl border border-slate-300 text-xs">PopQuete est un outil strictement anonyme : aucune information personnelle n'est collectée (hormis l'âge si le sondé le souhaite).</textarea>
+                </div>
+            </div>
+
+            <!-- Code PIN & Sauvegarde JSON -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 space-y-3">
+                <h2 class="text-sm font-extrabold text-slate-900">🔒 Code PIN Admin & Sauvegarde</h2>
+                <p class="text-xs text-slate-500">
+                    Activez un code PIN pour empêcher les personnes sondées d'ouvrir les onglets Dashboard et Config lorsque vous leur prêtez votre téléphone.
+                </p>
+                <div class="flex gap-2">
+                    <input type="password" id="cfgPinInput" inputmode="numeric" placeholder="Nouveau PIN (vide = aucun)"
+                        class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-300 text-sm font-bold">
+                    <button type="button" onclick="saveMobilePin()" class="px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-xs font-extrabold shrink-0">
+                        Définir PIN
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="exportBackupJSON()" class="py-2.5 px-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-xs">
+                        💾 Exporter (.json)
+                    </button>
+                    <label class="py-2.5 px-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-xs text-center cursor-pointer">
+                        📂 Importer (.json)
+                        <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- BOTTOM NAVIGATION BAR (BARRE D'ONGLETS MOBILE NATIVE EN BAS)        -->
+    <!-- =================================================================== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200"
+         style="padding-bottom: var(--safe-bottom);">
+        <div class="max-w-lg mx-auto grid grid-cols-3 h-16">
+            <button type="button" id="navBtnSurvey" onclick="navigateScreen('survey')"
+                class="nav-active flex flex-col items-center justify-center gap-0.5 text-slate-400 transition">
+                <span class="nav-pill px-4 py-0.5 rounded-full text-base transition">📝</span>
+                <span class="text-[11px] font-extrabold">Sondage</span>
+            </button>
+
+            <button type="button" id="navBtnDashboard" onclick="navigateScreen('dashboard')"
+                class="flex flex-col items-center justify-center gap-0.5 text-slate-400 transition">
+                <span class="nav-pill px-4 py-0.5 rounded-full text-base transition">📊</span>
+                <span class="text-[11px] font-extrabold">Dashboard</span>
+            </button>
+
+            <button type="button" id="navBtnConfig" onclick="navigateScreen('config')"
+                class="flex flex-col items-center justify-center gap-0.5 text-slate-400 transition">
+                <span class="nav-pill px-4 py-0.5 rounded-full text-base transition">⚙️</span>
+                <span class="text-[11px] font-extrabold">Questions & X</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- =================================================================== -->
+    <!-- MOTEUR JAVASCRIPT & PWA POPQUETE                                    -->
+    <!-- =================================================================== -->
+    <script>
+        const STORAGE_KEY_QUESTIONS = 'statlab_pro_questions_v2';
+        const STORAGE_KEY_RESPONSES = 'statlab_pro_responses_v2';
+        const STORAGE_KEY_PIN = 'statlab_pro_pin_v2';
+        const STORAGE_KEY_CONTEXT = 'statlab_pro_context_v2';
+
+        let questions = [];
+        let responses = [];
+        let shareAge = true;
+        let adminUnlockedSession = false;
+        let pendingTargetScreen = null;
+        let chartAgeInstance = null;
+        let chartDistInstance = null;
+        let deferredInstallPrompt = null;
+
+        window.addEventListener('DOMContentLoaded', function() {
+            setupPWA();
+            loadAllStorage();
+            renderEverywhere();
+        });
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            document.getElementById('nativeInstallBtn').classList.remove('hidden');
+        });
+
+        // Génère l'icône d'application et le Web App Manifest pour l'installation native sur smartphone
+        function setupPWA() {
+            const iconCanvas = document.createElement('canvas');
+            iconCanvas.width = 512;
+            iconCanvas.height = 512;
+            const ictx = iconCanvas.getContext('2d');
+
+            const grad = ictx.createLinearGradient(0, 0, 512, 512);
+            grad.addColorStop(0, '#1e1b4b');
+            grad.addColorStop(1, '#0f172a');
+            ictx.fillStyle = grad;
+            ictx.fillRect(0, 0, 512, 512);
+
+            ictx.fillStyle = '#818cf8';
+            ictx.fillRect(130, 250, 55, 130);
+            ictx.fillStyle = '#6366f1';
+            ictx.fillRect(225, 180, 55, 200);
+            ictx.fillStyle = '#34d399';
+            ictx.fillRect(320, 120, 55, 260);
+
+            const iconDataUrl = iconCanvas.toDataURL('image/png');
+            document.getElementById('appleTouchIcon').href = iconDataUrl;
+
+            const manifestObj = {
+                name: "PopQuete — Sondages Citoyens Anonymes",
+                short_name: "PopQuete",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#0f172a",
+                theme_color: "#0f172a",
+                orientation: "portrait",
+                icons: [
+                    { src: iconDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+                ]
+            };
+            const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+            document.getElementById('dynamicManifest').href = URL.createObjectURL(blob);
+        }
+
+        function hapticFeedback() {
+            if (navigator.vibrate) navigator.vibrate(18);
+        }
+
+        function showToast(text) {
+            const t = document.getElementById('appToast');
+            document.getElementById('appToastText').textContent = text;
+            t.classList.remove('hidden');
+            setTimeout(function() { t.classList.add('hidden'); }, 2400);
+        }
+
+        function formatXHandle(raw) {
+            const clean = String(raw || '').trim().replace(/^@+/, '');
+            return clean ? '@' + clean : '@PopQuete';
+        }
+
+        function loadAllStorage() {
+            try {
+                const qRaw = localStorage.getItem(STORAGE_KEY_QUESTIONS);
+                questions = qRaw ? JSON.parse(qRaw) : [];
+            } catch (e) { questions = []; }
+
+            if (questions.length === 0) {
+                questions = [{
+                    id: 'q_default_open',
+                    title: "Quelle est votre réponse ou votre principale motivation aujourd'hui ?",
+                    type: 'text',
+                    category: 'Expression libre'
+                }];
+                localStorage.setItem(STORAGE_KEY_QUESTIONS, JSON.stringify(questions));
+            }
+
+            try {
+                const rRaw = localStorage.getItem(STORAGE_KEY_RESPONSES);
+                responses = rRaw ? JSON.parse(rRaw) : [];
+            } catch (e) { responses = []; }
+
+            try {
+                const cRaw = localStorage.getItem(STORAGE_KEY_CONTEXT);
+                if (cRaw) {
+                    const parsed = JSON.parse(cRaw);
+                    if (parsed.xAccount) document.getElementById('cfgXInput').value = parsed.xAccount;
+                    if (parsed.reason) document.getElementById('cfgReasonInput').value = parsed.reason;
+                    if (parsed.notice) document.getElementById('cfgNoticeInput').value = parsed.notice;
+                }
+            } catch (e) {}
+
+            document.getElementById('cfgPinInput').value = localStorage.getItem(STORAGE_KEY_PIN) || '';
+        }
+
+        function saveQuestionsAndResponses() {
+            localStorage.setItem(STORAGE_KEY_QUESTIONS, JSON.stringify(questions));
+            localStorage.setItem(STORAGE_KEY_RESPONSES, JSON.stringify(responses));
+        }
+
+        function saveMobileContext() {
+            const xAcc = formatXHandle(document.getElementById('cfgXInput').value);
+            const reason = document.getElementById('cfgReasonInput').value;
+            const notice = document.getElementById('cfgNoticeInput').value;
+            localStorage.setItem(STORAGE_KEY_CONTEXT, JSON.stringify({
+                xAccount: xAcc,
+                reason: reason,
+                notice: notice
+            }));
+            syncContextHeaders();
+        }
+
+        function syncContextHeaders() {
+            const xAcc = formatXHandle(document.getElementById('cfgXInput').value);
+            const reason = document.getElementById('cfgReasonInput').value.trim() || "Enquête Statistique & Recueil d'Expression";
+            const notice = document.getElementById('cfgNoticeInput').value.trim();
+            const xUrl = 'https://x.com/' + encodeURIComponent(xAcc.replace(/^@/, ''));
+
+            document.getElementById('topXHandle').textContent = xAcc;
+            document.getElementById('topXLink').href = xUrl;
+            document.getElementById('surveyXInline').textContent = xAcc;
+            document.getElementById('successXHandle').textContent = xAcc;
+            document.getElementById('successXLink').href = xUrl;
+            document.getElementById('surveyManifestationTitle').textContent = reason;
+            if (notice) document.getElementById('surveyAnonymityNotice').textContent = notice;
+        }
+
+        // ===================================================================
+        // NAVIGATION MOBILE ENTRE LES 3 ÉCRANS (AVEC PROTECTION PIN ADMIN)
+        // ===================================================================
+        function navigateScreen(screen) {
+            hapticFeedback();
+            const savedPin = localStorage.getItem(STORAGE_KEY_PIN);
+
+            // Si on revient sur l'écran Sondage, on reverrouille automatiquement la session Admin pour pouvoir prêter le téléphone
+            if (screen === 'survey') {
+                adminUnlockedSession = false;
+                activateScreenUI('survey');
+                return;
+            }
+
+            if (savedPin && !adminUnlockedSession) {
+                pendingTargetScreen = screen;
+                document.getElementById('unlockPinField').value = '';
+                document.getElementById('pinErrorMsg').classList.add('hidden');
+                document.getElementById('pinLockModal').classList.remove('hidden');
+                return;
+            }
+
+            activateScreenUI(screen);
+        }
+
+        function confirmPinUnlock() {
+            const entered = document.getElementById('unlockPinField').value;
+            const savedPin = localStorage.getItem(STORAGE_KEY_PIN);
+            if (entered === savedPin) {
+                adminUnlockedSession = true;
+                document.getElementById('pinLockModal').classList.add('hidden');
+                activateScreenUI(pendingTargetScreen || 'dashboard');
+            } else {
+                document.getElementById('pinErrorMsg').classList.remove('hidden');
+            }
+        }
+
+        function cancelPinUnlock() {
+            document.getElementById('pinLockModal').classList.add('hidden');
+            activateScreenUI('survey');
+        }
+
+        function activateScreenUI(screen) {
+            const screens = {
+                survey: document.getElementById('screenSurvey'),
+                dashboard: document.getElementById('screenDashboard'),
+                config: document.getElementById('screenConfig')
+            };
+            const navs = {
+                survey: document.getElementById('navBtnSurvey'),
+                dashboard: document.getElementById('navBtnDashboard'),
+                config: document.getElementById('navBtnConfig')
+            };
+
+            Object.keys(screens).forEach(function(k) {
+                screens[k].classList.toggle('hidden', k !== screen);
+                navs[k].classList.toggle('nav-active', k === screen);
+            });
+
+            if (screen === 'dashboard') refreshMobileDashboard();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===================================================================
+        // LOGIQUE DE L'ÉCRAN SONDÉ + SCROLL AUTOMATIQUE
+        // ===================================================================
+        function renderEverywhere() {
+            syncContextHeaders();
+
+            const sSelect = document.getElementById('surveyQuestionSelect');
+            const dSelect = document.getElementById('dashQuestionSelect');
+            const prevS = sSelect.value;
+            const prevD = dSelect.value;
+
+            const opts = questions.map(function(q, i) {
+                const cnt = responses.filter(function(r) { return r.questionId === q.id; }).length;
+                return '<option value="' + q.id + '">Q' + (i + 1) + ' — ' + escapeHtml(q.title) + ' (' + cnt + ')</option>';
+            }).join('');
+
+            sSelect.innerHTML = opts;
+            dSelect.innerHTML = opts;
+
+            if (questions.some(function(q) { return q.id === prevS; })) sSelect.value = prevS;
+            if (questions.some(function(q) { return q.id === prevD; })) dSelect.value = prevD;
+
+            document.getElementById('surveyQuestionPickerWrap').classList.toggle('hidden', questions.length <= 1);
+
+            onSurveyQuestionChange();
+            renderConfigQuestionsList();
+            refreshMobileDashboard();
+        }
+
+        function getActiveSurveyQuestion() {
+            const id = document.getElementById('surveyQuestionSelect').value;
+            return questions.find(function(q) { return q.id === id; }) || questions[0];
+        }
+
+        function onSurveyQuestionChange() {
+            const q = getActiveSurveyQuestion();
+            if (!q) return;
+
+            document.getElementById('surveyQCatBadge').textContent = q.category || 'Question';
+            document.getElementById('surveyQTitleText').textContent = q.title;
+
+            const wrap = document.getElementById('surveyStructuredWrap');
+            const label = document.getElementById('surveyTextareaLabel');
+
+            if (q.type === 'text') {
+                wrap.classList.add('hidden');
+                wrap.innerHTML = '';
+                label.textContent = 'Votre réponse (zone de texte libre) * :';
+            } else if (q.type === 'numeric') {
+                wrap.classList.remove('hidden');
+                wrap.innerHTML =
+                    '<div class="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-100 space-y-1.5">' +
+                        '<label class="block text-[11px] font-bold uppercase text-indigo-900">Votre réponse chiffrée * :</label>' +
+                        '<input type="number" step="any" id="surveyStructInput" placeholder="Ex: 15" ' +
+                        'onkeydown="if(event.key===\'Enter\'){event.preventDefault(); finishStep1AndAutoScroll();}" ' +
+                        'class="w-full px-3.5 py-2.5 rounded-xl border border-indigo-200 bg-white font-black text-indigo-700">' +
+                    '</div>';
+                label.textContent = 'Précision écrite (facultatif) :';
+            } else if (q.type === 'scale10') {
+                wrap.classList.remove('hidden');
+                wrap.innerHTML =
+                    '<div class="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-100 space-y-2">' +
+                        '<div class="flex justify-between items-center">' +
+                            '<span class="text-[11px] font-bold uppercase text-indigo-900">Votre note sur 10 * :</span>' +
+                            '<span id="surveyScaleBadge" class="px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white font-black text-xs">5 / 10</span>' +
+                        '</div>' +
+                        '<input type="range" id="surveyStructInput" min="1" max="10" step="0.5" value="5" ' +
+                        'oninput="document.getElementById(\'surveyScaleBadge\').textContent = this.value + \' / 10\'" ' +
+                        'onchange="finishStep1AndAutoScroll()" ' +
+                        'class="w-full accent-indigo-600 h-2 bg-white rounded-lg">' +
+                    '</div>';
+                label.textContent = 'Précision écrite (facultatif) :';
+            } else if (q.type === 'yesno') {
+                wrap.classList.remove('hidden');
+                wrap.innerHTML =
+                    '<div class="grid grid-cols-2 gap-2.5">' +
+                        '<button type="button" id="mBtnOui" onclick="pickMobileYesNo(\'Oui\')" class="py-3 rounded-2xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 font-extrabold text-xs">👍 Oui</button>' +
+                        '<button type="button" id="mBtnNon" onclick="pickMobileYesNo(\'Non\')" class="py-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-extrabold text-xs">👎 Non</button>' +
+                        '<input type="hidden" id="surveyStructInput" value="Oui">' +
+                    '</div>';
+                label.textContent = 'Précision écrite (facultatif) :';
+            }
+        }
+
+        function pickMobileYesNo(val) {
+            hapticFeedback();
+            document.getElementById('surveyStructInput').value = val;
+            document.getElementById('mBtnOui').className = val === 'Oui'
+                ? 'py-3 rounded-2xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 font-extrabold text-xs'
+                : 'py-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-extrabold text-xs';
+            document.getElementById('mBtnNon').className = val === 'Non'
+                ? 'py-3 rounded-2xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 font-extrabold text-xs'
+                : 'py-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-extrabold text-xs';
+            finishStep1AndAutoScroll();
+        }
+
+        function finishStep1AndAutoScroll() {
+            hapticFeedback();
+            const q = getActiveSurveyQuestion();
+            const txt = document.getElementById('surveyTextInput').value.trim();
+
+            if (q && q.type === 'text' && !txt) {
+                alert('Veuillez écrire votre réponse avant de continuer.');
+                document.getElementById('surveyTextInput').focus();
+                return;
+            }
+
+            if (document.activeElement) document.activeElement.blur();
+            document.getElementById('surveyStepBadge').textContent = 'Étape 2 / 2';
+
+            const step2 = document.getElementById('mobileStep2');
+            step2.classList.remove('step-highlight');
+            void step2.offsetWidth;
+            step2.classList.add('step-highlight');
+
+            setTimeout(function() {
+                step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        function scrollToFinalSubmit() {
+            setTimeout(function() {
+                document.getElementById('mobileSubmitAnchor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 140);
+        }
+
+        function setMobileAgeShare(allow, autoScroll) {
+            hapticFeedback();
+            shareAge = allow;
+            document.getElementById('btnAgeAccept').classList.toggle('choice-active', allow);
+            document.getElementById('btnAgeDecline').classList.toggle('choice-active', !allow);
+            document.getElementById('mobileAgeControls').classList.toggle('hidden', !allow);
+            if (!allow && autoScroll) scrollToFinalSubmit();
+        }
+
+        function stepMobileAge(delta) {
+            const cur = parseInt(document.getElementById('mobileAgeNumber').value, 10) || 20;
+            syncMobileAge(cur + delta, false);
+        }
+
+        function syncMobileAge(val, scrollEnd) {
+            let n = parseInt(val, 10);
+            if (isNaN(n)) n = 20;
+            n = Math.max(10, Math.min(110, n));
+            document.getElementById('mobileAgeNumber').value = n;
+            document.getElementById('mobileAgeRange').value = Math.max(14, Math.min(85, n));
+            if (scrollEnd) {
+                hapticFeedback();
+                scrollToFinalSubmit();
+            }
+        }
+
+        function submitMobileSurvey() {
+            hapticFeedback();
+            const q = getActiveSurveyQuestion();
+            if (!q) return;
+
+            const txt = document.getElementById('surveyTextInput').value.trim();
+            let finalAns = '';
+            let note = 'Anonyme strict';
+
+            if (q.type === 'text') {
+                if (!txt) {
+                    alert('Veuillez écrire votre réponse dans la zone de texte.');
+                    document.getElementById('mobileStep1').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                finalAns = txt;
+            } else {
+                const structEl = document.getElementById('surveyStructInput');
+                const raw = structEl ? structEl.value : '';
+                if (raw === '' || raw === null) {
+                    alert('Veuillez renseigner votre réponse.');
+                    return;
+                }
+                finalAns = (q.type === 'numeric' || q.type === 'scale10') ? parseFloat(raw) : String(raw).trim();
+                if (txt) note = 'Précision : "' + txt + '"';
+            }
+
+            const finalAge = shareAge ? (parseInt(document.getElementById('mobileAgeNumber').value, 10) || 20) : null;
+
+            responses.unshift({
+                id: 'r_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                questionId: q.id,
+                age: finalAge,
+                answer: finalAns,
+                note: note,
+                createdAt: new Date().toISOString().slice(0, 10)
+            });
+
+            saveQuestionsAndResponses();
+
+            document.getElementById('surveyActiveForm').classList.add('hidden');
+            document.getElementById('surveySuccessCard').classList.remove('hidden');
+            document.getElementById('successSummaryText').innerHTML =
+                '<div><strong>Question :</strong> ' + escapeHtml(q.title) + '</div>' +
+                '<div><strong>Réponse :</strong> ' + escapeHtml(String(finalAns)) + '</div>' +
+                '<div><strong>Âge :</strong> ' + (finalAge !== null ? finalAge + ' ans' : 'Non communiqué') + '</div>';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetMobileSurvey() {
+            hapticFeedback();
+            document.getElementById('surveyTextInput').value = '';
+            document.getElementById('surveyStepBadge').textContent = 'Étape 1 / 2';
+            setMobileAgeShare(true, false);
+            syncMobileAge(20, false);
+            onSurveyQuestionChange();
+            document.getElementById('surveySuccessCard').classList.add('hidden');
+            document.getElementById('surveyActiveForm').classList.remove('hidden');
+            renderEverywhere();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===================================================================
+        // LOGIQUE DU DASHBOARD STATISTIQUE MOBILE
+        // ===================================================================
+        function onDashAgeModeChange() {
+            const mode = document.getElementById('dashAgeFilterMode').value;
+            document.getElementById('dashExactAgeWrap').classList.toggle('hidden', mode !== 'exact');
+            document.getElementById('dashRangeAgeWrap').classList.toggle('hidden', mode !== 'range');
+            if (mode === 'all') document.getElementById('dashDrawBanner').classList.add('hidden');
+            refreshMobileDashboard();
+        }
+
+        function resetDashAgeFilter() {
+            document.getElementById('dashAgeFilterMode').value = 'all';
+            onDashAgeModeChange();
+        }
+
+        function drawRandomAgeMobile() {
+            hapticFeedback();
+            const qId = document.getElementById('dashQuestionSelect').value;
+            const pool = responses.filter(function(r) { return r.questionId === qId && r.age !== null && r.age !== undefined; });
+            if (pool.length === 0) {
+                alert('Aucun sondé avec un âge renseigné sur cette question.');
+                return;
+            }
+            const picked = pool[Math.floor(Math.random() * pool.length)];
+            document.getElementById('dashAgeFilterMode').value = 'exact';
+            document.getElementById('dashExactAgeVal').value = picked.age;
+            onDashAgeModeChange();
+
+            const banner = document.getElementById('dashDrawBanner');
+            banner.classList.remove('hidden');
+            document.getElementById('dashDrawText').innerHTML = '🎲 Âge tiré : <strong>' + picked.age + ' ans</strong> (Réponse : ' + escapeHtml(String(picked.answer)) + ')';
+        }
+
+        function filterByDashAge(list) {
+            const mode = document.getElementById('dashAgeFilterMode').value;
+            if (mode === 'exact') {
+                const target = parseInt(document.getElementById('dashExactAgeVal').value, 10);
+                return list.filter(function(r) { return r.age === target; });
+            }
+            if (mode === 'range') {
+                const minA = parseInt(document.getElementById('dashMinAgeVal').value, 10) || 0;
+                const maxA = parseInt(document.getElementById('dashMaxAgeVal').value, 10) || 130;
+                return list.filter(function(r) { return r.age !== null && r.age >= minA && r.age <= maxA; });
+            }
+            if (mode === 'declined') {
+                return list.filter(function(r) { return r.age === null || r.age === undefined; });
+            }
+            return list;
+        }
+
+        function calcStats(arr) {
+            if (!arr || arr.length === 0) return null;
+            const n = arr.length;
+            const sum = arr.reduce(function(a, b) { return a + b; }, 0);
+            const mean = sum / n;
+            const sorted = arr.slice().sort(function(a, b) { return a - b; });
+            const mid = Math.floor(n / 2);
+            const median = (n % 2 !== 0) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+            const variance = arr.reduce(function(acc, v) { return acc + Math.pow(v - mean, 2); }, 0) / n;
+            return { n: n, mean: mean, median: median, std: Math.sqrt(variance), min: sorted[0], max: sorted[n - 1] };
+        }
+
+        function calcPearson(xs, ys) {
+            const n = xs.length;
+            if (n < 2) return null;
+            const mx = xs.reduce(function(a, b) { return a + b; }, 0) / n;
+            const my = ys.reduce(function(a, b) { return a + b; }, 0) / n;
+            let num = 0, dx2 = 0, dy2 = 0;
+            for (let i = 0; i < n; i++) {
+                const dx = xs[i] - mx;
+                const dy = ys[i] - my;
+                num += dx * dy;
+                dx2 += dx * dx;
+                dy2 += dy * dy;
+            }
+            if (dx2 === 0 || dy2 === 0) return 0;
+            return num / Math.sqrt(dx2 * dy2);
+        }
+
+        function refreshMobileDashboard() {
+            const qId = document.getElementById('dashQuestionSelect').value;
+            const q = questions.find(function(item) { return item.id === qId; });
+            const allQ = responses.filter(function(r) { return r.questionId === qId; });
+            const filtered = filterByDashAge(allQ);
+
+            document.getElementById('mKpiCount').textContent = filtered.length + ' / ' + allQ.length;
+
+            const knownAges = filtered.filter(function(r) { return r.age !== null && r.age !== undefined; }).map(function(r) { return r.age; });
+            if (knownAges.length > 0) {
+                const aSt = calcStats(knownAges);
+                document.getElementById('mKpiAge').textContent = aSt.mean.toFixed(1) + ' ans';
+                document.getElementById('mKpiAgeSub').textContent = 'Min ' + aSt.min + ' • Max ' + aSt.max + ' ans';
+            } else {
+                document.getElementById('mKpiAge').textContent = 'Non indiqué';
+                document.getElementById('mKpiAgeSub').textContent = 'Sans âge';
+            }
+
+            if (!q || filtered.length === 0) {
+                document.getElementById('mKpiMean').textContent = '—';
+                document.getElementById('mKpiMeanSub').textContent = 'Aucune donnée';
+                document.getElementById('mKpiMedStd').textContent = '—';
+                document.getElementById('mKpiMinMax').textContent = '—';
+                document.getElementById('mKpiCorr').textContent = 'Pearson r : —';
+            } else if (q.type === 'numeric' || q.type === 'scale10') {
+                const nums = filtered.map(function(r) { return Number(r.answer); }).filter(function(v) { return !isNaN(v); });
+                const st = calcStats(nums);
+                const pairs = filtered.filter(function(r) { return r.age !== null && !isNaN(Number(r.answer)); });
+                const rVal = calcPearson(pairs.map(function(p) { return p.age; }), pairs.map(function(p) { return Number(p.answer); }));
+
+                document.getElementById('mKpiMean').textContent = st.mean.toFixed(2);
+                document.getElementById('mKpiMeanSub').textContent = q.type === 'scale10' ? 'Moyenne / 10' : 'Moyenne';
+                document.getElementById('mKpiMedStd').textContent = 'Méd ' + st.median.toFixed(1) + ' • σ ' + st.std.toFixed(1);
+                document.getElementById('mKpiMinMax').textContent = 'Min ' + st.min + ' • Max ' + st.max;
+                document.getElementById('mKpiCorr').textContent = 'Pearson r : ' + (rVal !== null ? rVal.toFixed(2) : 'N/A');
+            } else {
+                const counts = {};
+                filtered.forEach(function(r) { counts[r.answer] = (counts[r.answer] || 0) + 1; });
+                const top = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0];
+                const pct = ((top[1] / filtered.length) * 100).toFixed(0);
+                document.getElementById('mKpiMean').textContent = top[0] + ' (' + pct + '%)';
+                document.getElementById('mKpiMeanSub').textContent = 'Réponse majoritaire';
+                document.getElementById('mKpiMedStd').textContent = Object.keys(counts).length + ' réponses distinctes';
+                document.getElementById('mKpiMinMax').textContent = top[1] + ' sur ' + filtered.length + ' sondés';
+                document.getElementById('mKpiCorr').textContent = 'Variable qualitative';
+            }
+
+            renderMobileCharts(q, allQ, filtered);
+            renderMobileResponsesList(filtered);
+        }
+
+        function renderMobileCharts(q, allQ, filtered) {
+            const ctx1 = document.getElementById('mobileChartAge').getContext('2d');
+            const ctx2 = document.getElementById('mobileChartDist').getContext('2d');
+
+            if (chartAgeInstance) chartAgeInstance.destroy();
+            if (chartDistInstance) chartDistInstance.destroy();
+            if (!q || allQ.length === 0) return;
+
+            const ages = Array.from(new Set(allQ.filter(function(r) { return r.age !== null; }).map(function(r) { return r.age; }))).sort(function(a, b) { return a - b; });
+            const hasNoAge = allQ.some(function(r) { return r.age === null; });
+            const labels = ages.map(function(a) { return a + ' ans'; });
+            if (hasNoAge) labels.push('Sans âge');
+
+            if (q.type === 'numeric' || q.type === 'scale10') {
+                const dataMeans = ages.map(function(a) {
+                    const g = allQ.filter(function(r) { return r.age === a; }).map(function(r) { return Number(r.answer); });
+                    return +(g.reduce(function(x, y) { return x + y; }, 0) / g.length).toFixed(2);
+                });
+                if (hasNoAge) {
+                    const ng = allQ.filter(function(r) { return r.age === null; }).map(function(r) { return Number(r.answer); });
+                    dataMeans.push(+(ng.reduce(function(x, y) { return x + y; }, 0) / ng.length).toFixed(2));
+                }
+
+                chartAgeInstance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: { labels: labels, datasets: [{ data: dataMeans, backgroundColor: '#4f46e5', borderRadius: 6 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: function(e, els) {
+                            if (els.length > 0) {
+                                const idx = els[0].index;
+                                if (idx < ages.length) {
+                                    document.getElementById('dashAgeFilterMode').value = 'exact';
+                                    document.getElementById('dashExactAgeVal').value = ages[idx];
+                                } else {
+                                    document.getElementById('dashAgeFilterMode').value = 'declined';
+                                }
+                                onDashAgeModeChange();
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                chartDistInstance = new Chart(ctx2, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Âge × Réponse',
+                            data: filtered.filter(function(r) { return r.age !== null; }).map(function(r) { return { x: r.age, y: Number(r.answer) }; }),
+                            backgroundColor: '#10b981',
+                            pointRadius: 5
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            } else {
+                const firstMod = allQ[0].answer;
+                const pcts = ages.map(function(a) {
+                    const g = allQ.filter(function(r) { return r.age === a; });
+                    const m = g.filter(function(r) { return r.answer === firstMod; }).length;
+                    return +((m / g.length) * 100).toFixed(1);
+                });
+                if (hasNoAge) {
+                    const ng = allQ.filter(function(r) { return r.age === null; });
+                    const nm = ng.filter(function(r) { return r.answer === firstMod; }).length;
+                    pcts.push(+((nm / ng.length) * 100).toFixed(1));
+                }
+
+                chartAgeInstance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: { labels: labels, datasets: [{ data: pcts, backgroundColor: '#6366f1', borderRadius: 6 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+
+                const counts = {};
+                filtered.forEach(function(r) { counts[r.answer] = (counts[r.answer] || 0) + 1; });
+                chartDistInstance = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(counts),
+                        datasets: [{ data: Object.values(counts), backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        function renderMobileResponsesList(filtered) {
+            const box = document.getElementById('mobileResponsesList');
+            if (filtered.length === 0) {
+                box.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Aucune réponse dans ce filtre.</div>';
+                return;
+            }
+            box.innerHTML = filtered.map(function(r) {
+                const ageTag = r.age !== null
+                    ? '<span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">' + r.age + ' ans</span>'
+                    : '<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold">Sans âge</span>';
+                return '<div class="p-3.5 flex items-center justify-between gap-2">' +
+                    '<div class="min-w-0 flex-1">' +
+                        '<div class="flex items-center gap-2">' +
+                            '<span class="text-xs font-extrabold text-indigo-700 truncate">' + escapeHtml(String(r.answer)) + '</span>' +
+                            ageTag +
+                        '</div>' +
+                        '<div class="text-[11px] text-slate-400 truncate mt-0.5">' + escapeHtml(r.note || '') + ' • ' + r.createdAt + '</div>' +
+                    '</div>' +
+                    '<button type="button" onclick="deleteResponseMobile(\'' + r.id + '\')" class="text-slate-300 hover:text-rose-600 font-bold px-2">&times;</button>' +
+                '</div>';
+            }).join('');
+        }
+
+        function deleteResponseMobile(id) {
+            responses = responses.filter(function(r) { return r.id !== id; });
+            saveQuestionsAndResponses();
+            renderEverywhere();
+        }
+
+        // ===================================================================
+        // PUBLICATION SUR X & EXTRACTION D'IMAGE PNG DEPUIS LE TÉLÉPHONE
+        // ===================================================================
+        function shareReportOnX() {
+            const qId = document.getElementById('dashQuestionSelect').value;
+            const q = questions.find(function(item) { return item.id === qId; });
+            if (!q) return;
+
+            const xAcc = formatXHandle(document.getElementById('cfgXInput').value);
+            const reason = document.getElementById('cfgReasonInput').value.trim() || 'Enquête citoyenne PopQuete';
+            const mean = document.getElementById('mKpiMean').textContent;
+            const age = document.getElementById('mKpiAge').textContent;
+            const cnt = document.getElementById('mKpiCount').textContent;
+
+            const text =
+                '📊 PopQuete — [' + reason + ']\n' +
+                'Question : ' + q.title + '\n' +
+                '• Moyenne / Majoritaire : ' + mean + '\n' +
+                '• Âge moyen indiqué : ' + age + '\n' +
+                '• Échantillon : ' + cnt + '\n' +
+                '🛡️ Sondage 100% anonyme sur ' + xAcc;
+
+            window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+        }
+
+        function exportMobileReportPNG() {
+            const qId = document.getElementById('dashQuestionSelect').value;
+            const q = questions.find(function(item) { return item.id === qId; });
+            if (!q) return;
+
+            const c1 = document.getElementById('mobileChartAge');
+            const c2 = document.getElementById('mobileChartDist');
+            const xAcc = formatXHandle(document.getElementById('cfgXInput').value);
+            const reason = document.getElementById('cfgReasonInput').value.trim() || 'Enquête Statistique PopQuete';
+            const notice = document.getElementById('cfgNoticeInput').value.trim();
+            const mean = document.getElementById('mKpiMean').textContent;
+            const age = document.getElementById('mKpiAge').textContent;
+            const cnt = document.getElementById('mKpiCount').textContent;
+
+            const out = document.createElement('canvas');
+            out.width = 1080;
+            out.height = 1350;
+            const ctx = out.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 1080, 1350);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 1080, 210);
+
+            ctx.fillStyle = '#34d399';
+            ctx.font = '900 24px Inter, sans-serif';
+            ctx.fillText('POPQUETE', 50, 52);
+
+            ctx.fillStyle = '#a5b4fc';
+            ctx.font = 'bold 18px Inter, sans-serif';
+            ctx.fillText('  •  STATISTIQUES PUBLIÉES SUR X : ' + xAcc, 190, 52);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'extrabold 30px Inter, sans-serif';
+            ctx.fillText(reason.slice(0, 62), 50, 110);
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '600 20px Inter, sans-serif';
+            ctx.fillText('Question : ' + q.title.slice(0, 75), 50, 168);
+
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(50, 240, 980, 80);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.fillText('Résultat : ' + mean + '   |   Âge moyen : ' + age + '   |   Sondés : ' + cnt, 80, 288);
+
+            ctx.drawImage(c1, 60, 360, 960, 390);
+            ctx.drawImage(c2, 60, 800, 960, 390);
+
+            ctx.fillStyle = '#ecfdf5';
+            ctx.fillRect(0, 1230, 1080, 120);
+            ctx.fillStyle = '#065f46';
+            ctx.font = 'bold 18px Inter, sans-serif';
+            ctx.fillText('🛡️ OUTIL ANONYME POPQUETE (ZÉRO DONNÉE PERSONNELLE HORMIS L\'ÂGE FACULTATIF)', 50, 1272);
+            ctx.fillStyle = '#047857';
+            ctx.font = '500 16px Inter, sans-serif';
+            ctx.fillText(notice.slice(0, 110), 50, 1308);
+
+            const link = document.createElement('a');
+            link.download = 'popquete_story_' + new Date().toISOString().slice(0, 10) + '.png';
+            link.href = out.toDataURL('image/png', 1.0);
+            link.click();
+            showToast('Image PNG enregistrée sur le téléphone !');
+        }
+
+        // ===================================================================
+        // GESTION DES QUESTIONS & PARAMÈTRES (ÉCRAN 3)
+        // ===================================================================
+        function addQuestionFromMobile() {
+            const title = document.getElementById('newQTitle').value.trim();
+            const type = document.getElementById('newQType').value;
+            const cat = document.getElementById('newQCat').value.trim() || 'Général';
+            if (!title) {
+                alert('Veuillez saisir une question.');
+                return;
+            }
+            const id = 'q_' + Date.now();
+            questions.push({ id: id, title: title, type: type, category: cat });
+            saveQuestionsAndResponses();
+            document.getElementById('newQTitle').value = '';
+            document.getElementById('newQCat').value = '';
+            renderEverywhere();
+            showToast('Question ajoutée !');
+        }
+
+        function renderConfigQuestionsList() {
+            document.getElementById('cfgQCount').textContent = questions.length;
+            const box = document.getElementById('cfgQuestionsList');
+            box.innerHTML = questions.map(function(q) {
+                const cnt = responses.filter(function(r) { return r.questionId === q.id; }).length;
+                return '<div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">' +
+                    '<div class="min-w-0 flex-1">' +
+                        '<div class="text-xs font-extrabold text-slate-900 truncate">' + escapeHtml(q.title) + '</div>' +
+                        '<div class="text-[11px] text-slate-500">' + escapeHtml(q.category) + ' • ' + cnt + ' rép.</div>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-1 shrink-0">' +
+                        '<button type="button" onclick="openEditQuestionModalById(\'' + q.id + '\')" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-xs font-bold text-indigo-600">✏️</button>' +
+                        '<button type="button" onclick="deleteQuestionMobile(\'' + q.id + '\')" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-xs font-bold text-rose-600">&times;</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function openEditQuestionModalById(id) {
+            const q = questions.find(function(item) { return item.id === id; });
+            if (!q) return;
+            document.getElementById('editQId').value = q.id;
+            document.getElementById('editQTitle').value = q.title;
+            document.getElementById('editQType').value = q.type;
+            document.getElementById('editQCat').value = q.category || 'Général';
+            document.getElementById('editQuestionModal').classList.remove('hidden');
+        }
+
+        function openEditCurrentDashQuestion() {
+            openEditQuestionModalById(document.getElementById('dashQuestionSelect').value);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editQuestionModal').classList.add('hidden');
+        }
+
+        function saveEditedQuestion() {
+            const id = document.getElementById('editQId').value;
+            const title = document.getElementById('editQTitle').value.trim();
+            const type = document.getElementById('editQType').value;
+            const cat = document.getElementById('editQCat').value.trim() || 'Général';
+            if (!title) return;
+
+            const idx = questions.findIndex(function(q) { return q.id === id; });
+            if (idx !== -1) {
+                questions[idx].title = title;
+                questions[idx].type = type;
+                questions[idx].category = cat;
+                saveQuestionsAndResponses();
+                renderEverywhere();
+                closeEditModal();
+                showToast('Question modifiée !');
+            }
+        }
+
+        function deleteQuestionMobile(id) {
+            if (questions.length <= 1) {
+                alert('Vous devez conserver au moins une question.');
+                return;
+            }
+            if (!confirm('Supprimer cette question et ses réponses ?')) return;
+            questions = questions.filter(function(q) { return q.id !== id; });
+            responses = responses.filter(function(r) { return r.questionId !== id; });
+            saveQuestionsAndResponses();
+            renderEverywhere();
+        }
+
+        function saveMobilePin() {
+            const val = document.getElementById('cfgPinInput').value.trim();
+            if (val) {
+                localStorage.setItem(STORAGE_KEY_PIN, val);
+                adminUnlockedSession = true;
+                showToast('Code PIN activé !');
+            } else {
+                localStorage.removeItem(STORAGE_KEY_PIN);
+                showToast('Code PIN désactivé');
+            }
+        }
+
+        function exportCSV() {
+            if (responses.length === 0) {
+                alert('Aucune réponse à exporter.');
+                return;
+            }
+            const xAcc = formatXHandle(document.getElementById('cfgXInput').value);
+            const headers = ['Outil', 'Compte_X', 'Question', 'Age', 'Reponse', 'Date'];
+            const rows = responses.map(function(r) {
+                const q = questions.find(function(item) { return item.id === r.questionId; }) || { title: '' };
+                return [
+                    '"PopQuete"',
+                    '"' + xAcc + '"',
+                    '"' + String(q.title).replace(/"/g, '""') + '"',
+                    r.age !== null ? r.age : 'Non indique',
+                    '"' + String(r.answer).replace(/"/g, '""') + '"',
+                    r.createdAt
+                ].join(';');
+            });
+            const blob = new Blob(['\uFEFF' + headers.join(';') + '\r\n' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'popquete_export.csv';
+            a.click();
+        }
+
+        function exportBackupJSON() {
+            const blob = new Blob([JSON.stringify({ questions: questions, responses: responses }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'popquete_backup.json';
+            a.click();
+        }
+
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed.questions) && Array.isArray(parsed.responses)) {
+                        questions = parsed.questions;
+                        responses = parsed.responses;
+                        saveQuestionsAndResponses();
+                        renderEverywhere();
+                        showToast('Données importées !');
+                    }
+                } catch (err) { alert('Fichier JSON invalide.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function openInstallModal() {
+            document.getElementById('installGuideModal').classList.remove('hidden');
+        }
+
+        function closeInstallModal() {
+            document.getElementById('installGuideModal').classList.add('hidden');
+        }
+
+        function triggerNativeInstall() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
